@@ -7,4 +7,4 @@ I believe Einstien's Brownian Motion theory is the most accurate and most scient
 2.  Random Motion (wondering around)
 3.  Restricted Motion (negative momentum, not growing or dropping as fast as before)
 
-This simulation is just for FUN. And I am **not a millionaire**... your call  
+[This simulation demo](https://htmlpreview.github.io/?https://github.com/ccchang0111/StockPrice_vs_BrownianMotion/blob/master/Demo_Stock_Momentum.nb.html) is just for FUN. And I am **not a millionaire**... your call  
