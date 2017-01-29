@@ -1,7 +1,12 @@
-# Demo the brownian motion analysis for a stock price
+# Demo - brownian motion analysis for stock's momentum
 
-#### This script is for visulaizing the momentum of given stocks
-(in this example, let's look at Juno and Kite, famous CAR-T companies)
+In this example, let's look at **Juno** and **Kite**, famous CAR-T companies.
+
+The momentum can be categorized into three groups:
+1. Random (hard to predict if the price will keep moving up or down) 
+2. with Momentum (if the stock price is going up, it is very likely to move higher, and vice versa)
+3. Restricted (the price is very likely to slow down, not keep going up or keep going down)
+
 
 ```r
 library(quantmod) # package for parsing stock info
@@ -42,7 +47,7 @@ library(reshape2)
 #####################
 #### User Inputs ####
 #####################
-sym=c("JUNO","KITE") # symbol for Roche,
+sym=c("JUNO","KITE") # symbols of interest
 getSymbols(sym, src="yahoo")
 ```
 
@@ -64,16 +69,15 @@ getSymbols(sym, src="yahoo")
 
 ```r
 # assign a period you want to measure
-time="20160901::20161113"
+time="20150501::20150630"
 ############################
 #### End of User Inputs ####
 ############################
 ```
-#### data analysis begins (also where the physics comes in!)
+
+### Let's look at their prices at this given period
 
 ```r
-MSD_slope_dt = 4 
-
 data = lapply(1:length(sym), function(x) {
   Cl(get(sym[x])[time])
 })
@@ -89,6 +93,35 @@ data_new = lapply(1:length(sym), function(x) {
   as.vector(data[,x],mode='numeric')
 })
 data_new = do.call(cbind,data_new)
+
+data_raw = data.frame(data) # make data to dataframe
+data_raw$date <- indx
+
+colnames(data_raw) <- c(sym,"date") # close price, this is just a matrix, not a data.frame
+tmp_raw=melt(data_raw,id.vars=c("date"), variable.name="Symbols", value.name="price")
+
+p0 = ggplot(tmp_raw, aes(x=date, y=price, color=Symbols)) + 
+  geom_line(size=1.2, alpha = 0.8) +
+  xlab("Date") + 
+  ylab("Close Price") +
+  theme_bw() +
+  theme(legend.position="top")
+  
+p0
+```
+
+![](Demo_Stock_Momentum_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
+
+Both seem to go up within this two-month period. 
+
+The question is: 
+
+## Will they keep going up in the next few weeks?
+
+### Let's calculate their momentum and this is also where the physics comes in!
+
+```r
+MSD_slope_dt = 5
 
 # generate MSD values
 MSD = sapply(1:(len-2), function(i) {
@@ -135,15 +168,10 @@ MSD=data.frame(tau=tau, MSD)
 MSD_p=data.frame(tau=tau, MSD_p)
 MSD_sd=data.frame(tau=tau, MSD_sd)
 
-data_raw = data.frame(data) # make data to dataframe
-data_raw$date <- indx
-
-colnames(data_raw) <- c(sym,"date") # close price, this is just a matrix, not a data.frame
 colnames(MSD) <- c("tau",sym)
 colnames(MSD_p) <- c("tau",sym)
 colnames(MSD_sd) <- c("tau",sym)
 
-tmp_raw=melt(data_raw,id.vars=c("date"), variable.name="Symbols", value.name="price")
 tmp_MSD=melt(MSD,id.vars=c("tau"), variable.name="Symbols", value.name="MSD")
 tmp_MSD_p=melt(MSD_p,id.vars=c("tau"), variable.name="Symbols", value.name="MSD")
 tmp_MSD_sd=melt(MSD_sd,id.vars=c("tau"), variable.name="Symbols", value.name="MSD_sd")
@@ -157,28 +185,7 @@ tmp_MSD_fit=melt(MSD_fit, id.vars="tau", variable.name="Symbols", value.name='MS
 
 par(mfrow=c(3,1)) 
 layout(1:2, heights=c(4,1))
-```
 
-#### Plotting the stock price of given symbol(s)
-
-```r
-p0 = ggplot(tmp_raw, aes(x=date, y=price, color=Symbols)) + 
-  geom_line(size=1.2, alpha = 0.8) +
-  xlab("Date") + 
-  ylab("Close Price") +
-  theme_bw() +
-  theme(legend.position="top")
-  
-p0
-```
-
-![](Demo_Stock_Momentum_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
-Looks like both stocks are dropping since September 2016. 
-But who will rebound first?
-
-#### Plotting the MSD and projected 'random motion' line
-
-```r
 p1 = ggplot(tmp_MSD, aes(x=tau, y=MSD, color=Symbols)) +
   geom_line(size=1.2, alpha=0.8) +
   geom_point(data=tmp_MSD_fit, aes(x=tau, y=MSD_fit, color=Symbols), size=0.5) +
@@ -189,8 +196,59 @@ p1 = ggplot(tmp_MSD, aes(x=tau, y=MSD, color=Symbols)) +
 p1
 ```
 
+![](Demo_Stock_Momentum_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+
+MSD plot and the dotted lines are **projected 'random motion' lines**
+
+Juno's momentum line (solid line) falls below the dotted line, which means it has **restricted motion**. This means Juno's stock price may **grow slower** or even start to drop. 
+
+Kite's momentum line is closer to the dotted line, which means Kite's stock price is **close to random**, and may **remain at the same trend** for the next few weeks.
+
+### See if our prediction for the next few weeks is correct or not
+
+
+```r
+sym=c("JUNO","KITE") # symbols of interest
+getSymbols(sym, src="yahoo")
+```
+
+```
+## [1] "JUNO" "KITE"
+```
+
+```r
+# assign a period you want to measure
+time2="20150701::20150731"
+# calculate the price normalized to the first data point
+# it is easier to compare the delta
+data2_norm = lapply(1:length(sym), function(x) {
+  vars = Cl(get(sym[x])[time2])
+  (vars - vars[[1]])/vars[[1]] * 100
+})
+
+data2_norm[is.na(data2_norm)] <- 0 # fill the NA with 0
+data2_norm = do.call(merge,c(data2_norm,all=FALSE))
+
+indx=index(data2_norm[])
+
+data_raw2 = data.frame(data2_norm) # make data to dataframe
+data_raw2$date <- indx
+
+colnames(data_raw2) <- c(sym,"date") 
+tmp_raw2 = melt(data_raw2,id.vars=c("date"), variable.name="Symbols", value.name="price")
+
+p2 = ggplot(tmp_raw2, aes(x=date, y=price, color=Symbols)) + 
+  geom_line(size=1.2, alpha = 0.8) +
+  xlab("Date") + 
+  ylab("% Change in Price") +
+  theme_bw() +
+  theme(legend.position="top")
+  
+p2
+```
+
 ![](Demo_Stock_Momentum_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 
-The short answer is Juno _might rebound_ quicker than Kite. Kite's 'dropping momentum' is a bit greater than Juno, while Juno has already reached a 'restricted momentum'.
+Juon is down while Kite remains up!
 
 #### well..this is my irresponsible analysis. Again, your call...
