@@ -249,6 +249,6 @@ p2
 
 ![](Demo_Stock_Momentum_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 
-Juon is down while Kite remains up!
+Juno is down while Kite remains up!
 
 #### well..this is my irresponsible analysis. Again, your call...
